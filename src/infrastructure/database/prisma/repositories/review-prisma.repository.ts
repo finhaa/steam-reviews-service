@@ -39,6 +39,28 @@ export class ReviewPrismaRepository implements ReviewRepository {
     }
   }
 
+  async findByIdAndGameId(id: number, gameId?: number): Promise<Review | null> {
+    try {
+      const review = await this.prisma.review.findFirst({
+        where: {
+          id,
+          ...(gameId !== undefined ? { gameId } : {}),
+        },
+      });
+      return review ? ReviewMapper.toDomain(review) : null;
+    } catch (error) {
+      this.logger.error(
+        `Failed to find review by ID ${id}${gameId ? ` and game ID ${gameId}` : ''}:`,
+        error,
+      );
+      throw new ReviewOperationException(
+        'find',
+        `Failed to find review by ID ${id}${gameId ? ` and game ID ${gameId}` : ''}`,
+        error instanceof Error ? error : undefined,
+      );
+    }
+  }
+
   async findBySteamId(steamId: string): Promise<Review | null> {
     try {
       const review = await this.prisma.review.findUnique({

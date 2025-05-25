@@ -2,10 +2,7 @@ import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { RegisterGameCommand } from '@app/game/commands/register-game.command';
 import { ListGamesQuery } from '@app/game/queries/list-games.query';
-import {
-  GameResponseDto,
-  RegisterGameDto,
-} from '@app/game/dto/game.dto';
+import { GameResponseDto, RegisterGameDto } from '@app/game/dto/game.dto';
 import { Game } from '@domain/game/entities/game.entity';
 
 @ApiTags('Games')
