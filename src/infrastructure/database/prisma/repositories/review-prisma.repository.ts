@@ -4,7 +4,12 @@ import { PrismaService } from '../prisma.service';
 import { ReviewRepository } from '../../../../domain/review/repositories/review.repository';
 import { Review } from '../../../../domain/review/entities/review.entity';
 import { ReviewMapper } from '../mappers/review.mapper';
-import { ReviewBatchOperationException } from '../../../../domain/review/exceptions/review.exceptions';
+import {
+  ReviewBatchOperationException,
+  ReviewNotFoundException,
+  ReviewOperationException,
+  ReviewDuplicateException,
+} from '../../../../domain/review/exceptions/review.exceptions';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -26,7 +31,7 @@ export class ReviewPrismaRepository implements ReviewRepository {
       return review ? ReviewMapper.toDomain(review) : null;
     } catch (error) {
       this.logger.error(`Failed to find review by ID ${id}:`, error);
-      throw new ReviewBatchOperationException(
+      throw new ReviewOperationException(
         'find',
         `Failed to find review by ID ${id}`,
         error instanceof Error ? error : undefined,
@@ -42,7 +47,7 @@ export class ReviewPrismaRepository implements ReviewRepository {
       return review ? ReviewMapper.toDomain(review) : null;
     } catch (error) {
       this.logger.error(`Failed to find review by Steam ID ${steamId}:`, error);
-      throw new ReviewBatchOperationException(
+      throw new ReviewOperationException(
         'find',
         `Failed to find review by Steam ID ${steamId}`,
         error instanceof Error ? error : undefined,
@@ -58,7 +63,7 @@ export class ReviewPrismaRepository implements ReviewRepository {
       return reviews.map((review) => ReviewMapper.toDomain(review));
     } catch (error) {
       this.logger.error(`Failed to find reviews for game ${gameId}:`, error);
-      throw new ReviewBatchOperationException(
+      throw new ReviewOperationException(
         'find',
         `Failed to find reviews for game ${gameId}`,
         error instanceof Error ? error : undefined,
@@ -79,16 +84,37 @@ export class ReviewPrismaRepository implements ReviewRepository {
       );
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
-          throw new ReviewBatchOperationException(
-            'create',
-            `Review with Steam ID ${review.steamId} already exists`,
-            error,
-          );
+          throw new ReviewDuplicateException(review.steamId, error);
         }
       }
-      throw new ReviewBatchOperationException(
+      throw new ReviewOperationException(
         'create',
         `Failed to create review for Steam ID ${review.steamId}`,
+        error instanceof Error ? error : undefined,
+      );
+    }
+  }
+
+  async update(review: Review): Promise<Review> {
+    try {
+      const updated = await this.prisma.review.update({
+        where: { steamId: review.steamId },
+        data: ReviewMapper.toPrisma(review),
+      });
+      return ReviewMapper.toDomain(updated);
+    } catch (error) {
+      this.logger.error(
+        `Failed to update review for Steam ID ${review.steamId}:`,
+        error,
+      );
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          throw new ReviewNotFoundException(review.steamId, error);
+        }
+      }
+      throw new ReviewOperationException(
+        'update',
+        `Failed to update review for Steam ID ${review.steamId}`,
         error instanceof Error ? error : undefined,
       );
     }
@@ -110,37 +136,8 @@ export class ReviewPrismaRepository implements ReviewRepository {
     } catch (error) {
       this.logger.error('Failed to batch create reviews:', error);
       throw new ReviewBatchOperationException(
-        'batch create',
+        'create',
         `Failed to create ${reviews.length} reviews`,
-        error instanceof Error ? error : undefined,
-      );
-    }
-  }
-
-  async update(review: Review): Promise<Review> {
-    try {
-      const updated = await this.prisma.review.update({
-        where: { steamId: review.steamId },
-        data: ReviewMapper.toPrisma(review),
-      });
-      return ReviewMapper.toDomain(updated);
-    } catch (error) {
-      this.logger.error(
-        `Failed to update review for Steam ID ${review.steamId}:`,
-        error,
-      );
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new ReviewBatchOperationException(
-            'update',
-            `Review with Steam ID ${review.steamId} not found`,
-            error,
-          );
-        }
-      }
-      throw new ReviewBatchOperationException(
-        'update',
-        `Failed to update review for Steam ID ${review.steamId}`,
         error instanceof Error ? error : undefined,
       );
     }
@@ -163,7 +160,7 @@ export class ReviewPrismaRepository implements ReviewRepository {
     } catch (error) {
       this.logger.error('Failed to batch update reviews:', error);
       throw new ReviewBatchOperationException(
-        'batch update',
+        'update',
         `Failed to update ${reviews.length} reviews`,
         error instanceof Error ? error : undefined,
       );
