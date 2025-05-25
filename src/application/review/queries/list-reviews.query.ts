@@ -1,8 +1,8 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { GamePrismaRepository } from '../../../infrastructure/database/prisma/repositories/game-prisma.repository';
-import { ReviewPrismaRepository } from '../../../infrastructure/database/prisma/repositories/review-prisma.repository';
-import { Review } from '../../../domain/review/entities/review.entity';
-import { ReviewQueryException } from '../../../domain/review/exceptions/review.exceptions';
+import { GamePrismaRepository } from '@infrastructure/database/prisma/repositories/game-prisma.repository';
+import { ReviewPrismaRepository } from '@infrastructure/database/prisma/repositories/review-prisma.repository';
+import { Review } from '@domain/review/entities/review.entity';
+import { ReviewQueryException } from '@domain/review/exceptions/review.exceptions';
 
 @Injectable()
 export class ListReviewsQuery {

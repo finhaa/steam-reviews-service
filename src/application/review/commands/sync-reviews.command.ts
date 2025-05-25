@@ -1,16 +1,16 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { GamePrismaRepository } from '../../../infrastructure/database/prisma/repositories/game-prisma.repository';
-import { ReviewPrismaRepository } from '../../../infrastructure/database/prisma/repositories/review-prisma.repository';
+import { GamePrismaRepository } from '@infrastructure/database/prisma/repositories/game-prisma.repository';
+import { ReviewPrismaRepository } from '@infrastructure/database/prisma/repositories/review-prisma.repository';
 import {
   SteamApiService,
   SteamReview,
-} from '../../../infrastructure/external/steam-api.service';
-import { Review } from '../../../domain/review/entities/review.entity';
-import { Game } from '../../../domain/game/entities/game.entity';
+} from '@infrastructure/external/steam-api.service';
+import { Review } from '@domain/review/entities/review.entity';
+import { Game } from '@domain/game/entities/game.entity';
 import {
   InvalidReviewDataException,
   ReviewSyncException,
-} from '../../../domain/review/exceptions/review.exceptions';
+} from '@domain/review/exceptions/review.exceptions';
 
 @Injectable()
 export class SyncReviewsCommand {

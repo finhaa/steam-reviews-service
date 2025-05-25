@@ -1,15 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../prisma.service';
-import { ReviewRepository } from '../../../../domain/review/repositories/review.repository';
-import { Review } from '../../../../domain/review/entities/review.entity';
-import { ReviewMapper } from '../mappers/review.mapper';
+import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { ReviewRepository } from '@domain/review/repositories/review.repository';
+import { Review } from '@domain/review/entities/review.entity';
+import { ReviewMapper } from '@infrastructure/database/prisma/mappers/review.mapper';
 import {
   ReviewBatchOperationException,
   ReviewNotFoundException,
   ReviewOperationException,
   ReviewDuplicateException,
-} from '../../../../domain/review/exceptions/review.exceptions';
+} from '@domain/review/exceptions/review.exceptions';
 import { Prisma } from '@prisma/client';
 
 @Injectable()

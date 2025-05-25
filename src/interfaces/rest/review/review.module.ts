@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ReviewController } from './review.controller';
-import { SyncReviewsCommand } from '../../../application/review/commands/sync-reviews.command';
-import { ListReviewsQuery } from '../../../application/review/queries/list-reviews.query';
-import { GetReviewQuery } from '../../../application/review/queries/get-reviews.query';
-import { InfrastructureModule } from '../../../infrastructure/infrastructure.module';
+import { SyncReviewsCommand } from '@app/review/commands/sync-reviews.command';
+import { ListReviewsQuery } from '@app/review/queries/list-reviews.query';
+import { GetReviewQuery } from '@app/review/queries/get-reviews.query';
+import { InfrastructureModule } from '@infrastructure/infrastructure.module';
 
 @Module({
   imports: [InfrastructureModule],

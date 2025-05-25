@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import axios from 'axios';
-import { RetryService } from '../services/retry.service';
+import { RetryService } from '@infrastructure/services/retry.service';
 
 export interface SteamReview {
   recommendationid: string;

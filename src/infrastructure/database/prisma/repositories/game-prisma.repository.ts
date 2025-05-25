@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma.service';
-import { GameRepository } from '../../../../domain/game/repositories/game.repository';
-import { Game } from '../../../../domain/game/entities/game.entity';
-import { GameMapper } from '../mappers/game.mapper';
+import { PrismaService } from '@infrastructure/database/prisma/prisma.service';
+import { GameRepository } from '@domain/game/repositories/game.repository';
+import { Game } from '@domain/game/entities/game.entity';
+import { GameMapper } from '@infrastructure/database/prisma/mappers/game.mapper';
 
 @Injectable()
 export class GamePrismaRepository implements GameRepository {

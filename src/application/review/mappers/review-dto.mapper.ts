@@ -1,4 +1,4 @@
-import { Review } from '../../../domain/review/entities/review.entity';
+import { Review } from '@domain/review/entities/review.entity';
 import { ReviewResponseDto } from '../dto/review.dto';
 
 export class ReviewDtoMapper {
@@ -21,4 +21,4 @@ export class ReviewDtoMapper {
   static toDtoList(reviews: Review[]): ReviewResponseDto[] {
     return reviews.map((review) => this.toDto(review));
   }
-} 
+}

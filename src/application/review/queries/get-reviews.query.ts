@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ReviewPrismaRepository } from '../../../infrastructure/database/prisma/repositories/review-prisma.repository';
-import { Review } from '../../../domain/review/entities/review.entity';
+import { ReviewPrismaRepository } from '@infrastructure/database/prisma/repositories/review-prisma.repository';
+import { Review } from '@domain/review/entities/review.entity';
 
 @Injectable()
 export class GetReviewQuery {

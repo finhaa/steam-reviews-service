@@ -1,5 +1,5 @@
 import { Review as PrismaReview } from '@prisma/client';
-import { Review } from '../../../../domain/review/entities/review.entity';
+import { Review } from '@domain/review/entities/review.entity';
 
 export class ReviewMapper {
   static toDomain(prismaReview: PrismaReview): Review {

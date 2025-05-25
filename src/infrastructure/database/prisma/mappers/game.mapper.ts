@@ -1,5 +1,5 @@
 import { Game as PrismaGame } from '@prisma/client';
-import { Game } from '../../../../domain/game/entities/game.entity';
+import { Game } from '@domain/game/entities/game.entity';
 
 export class GameMapper {
   static toDomain(prismaGame: PrismaGame): Game {

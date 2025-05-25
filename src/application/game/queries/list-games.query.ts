@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { GamePrismaRepository } from '../../../infrastructure/database/prisma/repositories/game-prisma.repository';
-import { Game } from '../../../domain/game/entities/game.entity';
+import { GamePrismaRepository } from '@infrastructure/database/prisma/repositories/game-prisma.repository';
+import { Game } from '@domain/game/entities/game.entity';
 
 @Injectable()
 export class ListGamesQuery {

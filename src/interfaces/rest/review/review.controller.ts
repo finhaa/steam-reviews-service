@@ -8,11 +8,11 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { SyncReviewsCommand } from '../../../application/review/commands/sync-reviews.command';
-import { ListReviewsQuery } from '../../../application/review/queries/list-reviews.query';
-import { GetReviewQuery } from '../../../application/review/queries/get-reviews.query';
-import { ReviewResponseDto } from '../../../application/review/dto/review.dto';
-import { ReviewDtoMapper } from '../../../application/review/mappers/review-dto.mapper';
+import { SyncReviewsCommand } from '@app/review/commands/sync-reviews.command';
+import { ListReviewsQuery } from '@app/review/queries/list-reviews.query';
+import { GetReviewQuery } from '@app/review/queries/get-reviews.query';
+import { ReviewResponseDto } from '@app/review/dto/review.dto';
+import { ReviewDtoMapper } from '@app/review/mappers/review-dto.mapper';
 
 @ApiTags('reviews')
 @Controller('games/:gameId/reviews')
