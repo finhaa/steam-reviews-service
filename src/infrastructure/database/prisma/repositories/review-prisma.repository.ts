@@ -1,70 +1,210 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma.service';
 import { ReviewRepository } from '../../../../domain/review/repositories/review.repository';
 import { Review } from '../../../../domain/review/entities/review.entity';
 import { ReviewMapper } from '../mappers/review.mapper';
+import { ReviewBatchOperationException } from '../../../../domain/review/exceptions/review.exceptions';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ReviewPrismaRepository implements ReviewRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly batchSize: number;
+  private readonly logger = new Logger(ReviewPrismaRepository.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {
+    this.batchSize =
+      this.configService.get('performance.database.batchSize') ?? 100;
+  }
 
   async findById(id: number): Promise<Review | null> {
-    const review = await this.prisma.review.findUnique({ where: { id } });
-    return review ? ReviewMapper.toDomain(review) : null;
+    try {
+      const review = await this.prisma.review.findUnique({ where: { id } });
+      return review ? ReviewMapper.toDomain(review) : null;
+    } catch (error) {
+      this.logger.error(`Failed to find review by ID ${id}:`, error);
+      throw new ReviewBatchOperationException(
+        'find',
+        `Failed to find review by ID ${id}`,
+        error instanceof Error ? error : undefined,
+      );
+    }
   }
 
   async findBySteamId(steamId: string): Promise<Review | null> {
-    const review = await this.prisma.review.findUnique({ where: { steamId } });
-    return review ? ReviewMapper.toDomain(review) : null;
+    try {
+      const review = await this.prisma.review.findUnique({
+        where: { steamId },
+      });
+      return review ? ReviewMapper.toDomain(review) : null;
+    } catch (error) {
+      this.logger.error(`Failed to find review by Steam ID ${steamId}:`, error);
+      throw new ReviewBatchOperationException(
+        'find',
+        `Failed to find review by Steam ID ${steamId}`,
+        error instanceof Error ? error : undefined,
+      );
+    }
   }
 
   async findByGameId(gameId: number): Promise<Review[]> {
-    const reviews = await this.prisma.review.findMany({
-      where: { gameId, deleted: false },
-    });
-    return reviews.map((review) => ReviewMapper.toDomain(review));
+    try {
+      const reviews = await this.prisma.review.findMany({
+        where: { gameId, deleted: false },
+      });
+      return reviews.map((review) => ReviewMapper.toDomain(review));
+    } catch (error) {
+      this.logger.error(`Failed to find reviews for game ${gameId}:`, error);
+      throw new ReviewBatchOperationException(
+        'find',
+        `Failed to find reviews for game ${gameId}`,
+        error instanceof Error ? error : undefined,
+      );
+    }
   }
 
   async create(review: Review): Promise<Review> {
-    const created = await this.prisma.review.create({
-      data: {
-        steamId: review.steamId,
-        gameId: review.gameId,
-        authorSteamId: review.authorSteamId,
-        recommended: review.recommended,
-        content: review.content,
-        timestampCreated: review.timestampCreated,
-        timestampUpdated: review.timestampUpdated,
-        deleted: review.deleted,
-      },
-    });
-    return ReviewMapper.toDomain(created);
+    try {
+      const created = await this.prisma.review.create({
+        data: ReviewMapper.toPrisma(review, true),
+      });
+      return ReviewMapper.toDomain(created);
+    } catch (error) {
+      this.logger.error(
+        `Failed to create review for Steam ID ${review.steamId}:`,
+        error,
+      );
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new ReviewBatchOperationException(
+            'create',
+            `Review with Steam ID ${review.steamId} already exists`,
+            error,
+          );
+        }
+      }
+      throw new ReviewBatchOperationException(
+        'create',
+        `Failed to create review for Steam ID ${review.steamId}`,
+        error instanceof Error ? error : undefined,
+      );
+    }
+  }
+
+  async batchCreate(reviews: Review[]): Promise<void> {
+    try {
+      const chunks = this.chunkArray(reviews, this.batchSize);
+
+      for (const chunk of chunks) {
+        await this.prisma.$transaction(
+          chunk.map((review) =>
+            this.prisma.review.create({
+              data: ReviewMapper.toPrisma(review, true),
+            }),
+          ),
+        );
+      }
+    } catch (error) {
+      this.logger.error('Failed to batch create reviews:', error);
+      throw new ReviewBatchOperationException(
+        'batch create',
+        `Failed to create ${reviews.length} reviews`,
+        error instanceof Error ? error : undefined,
+      );
+    }
   }
 
   async update(review: Review): Promise<Review> {
-    const updated = await this.prisma.review.update({
-      where: { steamId: review.steamId },
-      data: {
-        content: review.content,
-        recommended: review.recommended,
-        timestampUpdated: review.timestampUpdated,
-        deleted: review.deleted,
-      },
-    });
-    return ReviewMapper.toDomain(updated);
+    try {
+      const updated = await this.prisma.review.update({
+        where: { steamId: review.steamId },
+        data: ReviewMapper.toPrisma(review),
+      });
+      return ReviewMapper.toDomain(updated);
+    } catch (error) {
+      this.logger.error(
+        `Failed to update review for Steam ID ${review.steamId}:`,
+        error,
+      );
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          throw new ReviewBatchOperationException(
+            'update',
+            `Review with Steam ID ${review.steamId} not found`,
+            error,
+          );
+        }
+      }
+      throw new ReviewBatchOperationException(
+        'update',
+        `Failed to update review for Steam ID ${review.steamId}`,
+        error instanceof Error ? error : undefined,
+      );
+    }
+  }
+
+  async batchUpdate(reviews: Review[]): Promise<void> {
+    try {
+      const chunks = this.chunkArray(reviews, this.batchSize);
+
+      for (const chunk of chunks) {
+        await this.prisma.$transaction(
+          chunk.map((review) =>
+            this.prisma.review.update({
+              where: { steamId: review.steamId },
+              data: ReviewMapper.toPrisma(review),
+            }),
+          ),
+        );
+      }
+    } catch (error) {
+      this.logger.error('Failed to batch update reviews:', error);
+      throw new ReviewBatchOperationException(
+        'batch update',
+        `Failed to update ${reviews.length} reviews`,
+        error instanceof Error ? error : undefined,
+      );
+    }
   }
 
   async softDeleteByGameIdNotIn(
     gameId: number,
     steamIds: string[],
   ): Promise<void> {
-    await this.prisma.review.updateMany({
-      where: {
-        gameId,
-        steamId: { notIn: steamIds },
-        deleted: false,
-      },
-      data: { deleted: true },
-    });
+    try {
+      const chunks = this.chunkArray(steamIds, this.batchSize);
+
+      for (const chunk of chunks) {
+        await this.prisma.review.updateMany({
+          where: {
+            gameId,
+            steamId: { notIn: chunk },
+            deleted: false,
+          },
+          data: { deleted: true },
+        });
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to soft delete reviews for game ${gameId}:`,
+        error,
+      );
+      throw new ReviewBatchOperationException(
+        'soft delete',
+        `Failed to soft delete reviews for game ${gameId}`,
+        error instanceof Error ? error : undefined,
+      );
+    }
+  }
+
+  private chunkArray<T>(array: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < array.length; i += size) {
+      chunks.push(array.slice(i, i + size));
+    }
+    return chunks;
   }
 }

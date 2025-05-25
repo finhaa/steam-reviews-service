@@ -18,9 +18,11 @@ export class ReviewMapper {
     );
   }
 
-  static toPrisma(review: Review): PrismaReview {
-    return {
-      id: review.id,
+  static toPrisma(
+    review: Review,
+    isNew = false,
+  ): Omit<PrismaReview, 'id'> | PrismaReview {
+    const prismaReview = {
       steamId: review.steamId,
       gameId: review.gameId,
       authorSteamId: review.authorSteamId,
@@ -32,5 +34,7 @@ export class ReviewMapper {
       createdAt: review.createdAt,
       updatedAt: review.updatedAt,
     };
+
+    return isNew ? prismaReview : { ...prismaReview, id: review.id };
   }
 }
