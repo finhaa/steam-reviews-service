@@ -1,8 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { GamePrismaRepository } from '@infrastructure/database/prisma/repositories/game-prisma.repository';
 import { ReviewPrismaRepository } from '@infrastructure/database/prisma/repositories/review-prisma.repository';
 import { Review } from '@domain/review/entities/review.entity';
 import { ReviewQueryException } from '@domain/review/exceptions/review.exceptions';
+import { GameNotFoundException } from '@domain/game/exceptions/game.exceptions';
 
 @Injectable()
 export class ListReviewsQuery {
@@ -27,7 +28,7 @@ export class ListReviewsQuery {
       const game = await this.gameRepo.findById(gameId);
       if (!game) {
         this.logger.warn(`Game not found with ID ${gameId}`);
-        throw new NotFoundException(`Game with ID ${gameId} not found`);
+        throw new GameNotFoundException(gameId);
       }
 
       const reviews = await this.reviewRepo.findByGameId(gameId);
@@ -41,7 +42,7 @@ export class ListReviewsQuery {
       );
 
       if (
-        error instanceof NotFoundException ||
+        error instanceof GameNotFoundException ||
         error instanceof ReviewQueryException
       ) {
         throw error;

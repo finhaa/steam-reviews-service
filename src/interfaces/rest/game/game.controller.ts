@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { RegisterGameCommand } from '@app/game/commands/register-game.command';
 import { ListGamesQuery } from '@app/game/queries/list-games.query';
 import { GameResponseDto, RegisterGameDto } from '@app/game/dto/game.dto';
-import { Game } from '@domain/game/entities/game.entity';
+import { GameDtoMapper } from '@app/game/mappers/game-dto.mapper';
 
 @ApiTags('Games')
 @Controller('games')
@@ -22,13 +22,13 @@ export class GameController {
     description: 'Game registered successfully.',
     type: GameResponseDto,
   })
-  async registerGame(@Body() dto: RegisterGameDto): Promise<Game> {
+  async registerGame(@Body() dto: RegisterGameDto): Promise<GameResponseDto> {
     this.logger.log(
       `Received request to register game with appId ${dto.appId}`,
     );
     const game = await this.registerGameCommand.execute(dto.appId, dto.name);
     this.logger.log(`Game registered successfully with ID ${game.id}`);
-    return game;
+    return GameDtoMapper.toDto(game);
   }
 
   @Get()
@@ -38,10 +38,10 @@ export class GameController {
     description: 'List of games',
     type: [GameResponseDto],
   })
-  async listGames(): Promise<Game[]> {
+  async listGames(): Promise<GameResponseDto[]> {
     this.logger.log('Received request to list all games');
     const games = await this.listGamesQuery.execute();
     this.logger.log(`Returning ${games.length} games`);
-    return games;
+    return GameDtoMapper.toDtoList(games);
   }
 }
