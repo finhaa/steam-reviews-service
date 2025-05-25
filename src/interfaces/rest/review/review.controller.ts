@@ -1,14 +1,24 @@
-import { Controller, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  HttpStatus,
+  Logger,
+  Param,
+  ParseIntPipe,
+  Post,
+} from '@nestjs/common';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SyncReviewsCommand } from '../../../application/review/commands/sync-reviews.command';
 import { ListReviewsQuery } from '../../../application/review/queries/list-reviews.query';
 import { GetReviewQuery } from '../../../application/review/queries/get-reviews.query';
 import { ReviewResponseDto } from '../../../application/review/dto/review.dto';
-import { Review } from '../../../domain/review/entities/review.entity';
+import { ReviewDtoMapper } from '../../../application/review/mappers/review-dto.mapper';
 
-@ApiTags('Reviews')
+@ApiTags('reviews')
 @Controller('games/:gameId/reviews')
 export class ReviewController {
+  private readonly logger = new Logger(ReviewController.name);
+
   constructor(
     private readonly syncReviewsCommand: SyncReviewsCommand,
     private readonly listReviewsQuery: ListReviewsQuery,
@@ -16,16 +26,22 @@ export class ReviewController {
   ) {}
 
   @Post('fetch')
-  @ApiOperation({ summary: 'Fetch and sync reviews for a game' })
+  @ApiOperation({ summary: 'Fetch and sync reviews from Steam' })
   @ApiParam({ name: 'gameId', type: Number })
   @ApiResponse({
     status: 200,
-    description: 'Reviews fetched and synchronized.',
+    description: 'Reviews synchronized successfully',
+    schema: {
+      properties: {
+        message: { type: 'string' },
+      },
+    },
   })
   async fetchAndSync(
     @Param('gameId', ParseIntPipe) gameId: number,
   ): Promise<{ message: string }> {
-    return await this.syncReviewsCommand.execute(gameId);
+    this.logger.log(`Received request to sync reviews for game ${gameId}`);
+    return this.syncReviewsCommand.execute(gameId);
   }
 
   @Get()
@@ -36,10 +52,31 @@ export class ReviewController {
     description: 'List of reviews',
     type: [ReviewResponseDto],
   })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Game not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid game ID',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'Internal server error while fetching reviews',
+  })
   async listReviews(
     @Param('gameId', ParseIntPipe) gameId: number,
-  ): Promise<Review[]> {
-    return this.listReviewsQuery.execute(gameId);
+  ): Promise<ReviewResponseDto[]> {
+    this.logger.log(`Received request to list reviews for game ${gameId}`);
+
+    const reviews = await this.listReviewsQuery.execute(gameId);
+    const responseDtos = ReviewDtoMapper.toDtoList(reviews);
+
+    this.logger.log(
+      `Returning ${responseDtos.length} reviews for game ${gameId}`,
+    );
+
+    return responseDtos;
   }
 
   @Get(':reviewId')
@@ -51,10 +88,27 @@ export class ReviewController {
     description: 'The review',
     type: ReviewResponseDto,
   })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Review not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid game ID or review ID',
+  })
   async getReview(
     @Param('gameId', ParseIntPipe) gameId: number,
     @Param('reviewId', ParseIntPipe) reviewId: number,
-  ): Promise<Review> {
-    return this.getReviewQuery.execute(gameId, reviewId);
+  ): Promise<ReviewResponseDto> {
+    this.logger.log(
+      `Received request to get review ${reviewId} for game ${gameId}`,
+    );
+
+    const review = await this.getReviewQuery.execute(gameId, reviewId);
+    const responseDto = ReviewDtoMapper.toDto(review);
+
+    this.logger.log(`Returning review ${reviewId}`);
+
+    return responseDto;
   }
 }

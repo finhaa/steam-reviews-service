@@ -37,3 +37,16 @@ export class InvalidReviewDataException extends HttpException {
     );
   }
 }
+
+export class ReviewQueryException extends HttpException {
+  constructor(operation: string, message: string, cause?: Error) {
+    super(
+      {
+        message: `Failed to ${operation}: ${message}`,
+        error: 'Review Query Error',
+        cause: cause?.message,
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
+}
