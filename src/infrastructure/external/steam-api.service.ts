@@ -1,7 +1,10 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import axios from 'axios';
+import { RetryService } from '../services/retry.service';
 
-interface SteamReview {
+export interface SteamReview {
   recommendationid: string;
   author?: { steamid: string };
   review: string;
@@ -19,26 +22,41 @@ interface SteamApiResponse {
 @Injectable()
 export class SteamApiService {
   private readonly baseUrl = 'https://store.steampowered.com/appreviews';
+  private readonly pageSize: number;
 
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly retryService: RetryService,
+  ) {
+    this.pageSize = this.configService.get('performance.steam.pageSize') ?? 100;
+  }
+
+  @Throttle({
+    default: {
+      ttl: 60000,
+      limit: 100,
+    },
+  })
   async fetchAllReviews(appId: number): Promise<SteamReview[]> {
     const allReviews: SteamReview[] = [];
     let cursor = '*';
 
     try {
       do {
-        const response = await axios.get<SteamApiResponse>(
-          `${this.baseUrl}/${appId}`,
-          {
+        console.log('fetchAllReviews', appId, cursor);
+        const response = await this.retryService.withRetry(() =>
+          axios.get<SteamApiResponse>(`${this.baseUrl}/${appId}`, {
             params: {
               json: 1,
               filter: 'recent',
               language: 'all',
               cursor: cursor,
-              num_per_page: 100,
+              num_per_page: this.pageSize,
             },
             headers: { 'User-Agent': 'NestJS-SteamReviewService' },
-          },
+          }),
         );
+        console.log('fetchAllReviews', response.data);
 
         const data = response.data;
 

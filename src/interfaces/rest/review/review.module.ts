@@ -7,9 +7,10 @@ import { ListReviewsQuery } from '../../../application/review/queries/list-revie
 import { GetReviewQuery } from '../../../application/review/queries/get-reviews.query';
 import { GamePrismaRepository } from '../../../infrastructure/database/prisma/repositories/game-prisma.repository';
 import { ReviewPrismaRepository } from '../../../infrastructure/database/prisma/repositories/review-prisma.repository';
+import { InfrastructureModule } from '../../../infrastructure/services/infrastructure.module';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, InfrastructureModule],
   controllers: [ReviewController],
   providers: [
     SyncReviewsCommand,
