@@ -175,18 +175,49 @@ export class ReviewPrismaRepository implements ReviewRepository {
     steamIds: string[],
   ): Promise<void> {
     try {
-      const chunks = this.chunkArray(steamIds, this.batchSize);
+      this.logger.log(
+        `Marking reviews as deleted for game ${gameId} that are not in the set of ${steamIds.length} Steam IDs`,
+      );
+
+      const reviewsToDelete = await this.prisma.review.findMany({
+        where: {
+          gameId,
+          steamId: { notIn: steamIds },
+          deleted: false,
+        },
+        select: {
+          id: true,
+          steamId: true,
+        },
+      });
+
+      if (reviewsToDelete.length === 0) {
+        this.logger.log('No reviews need to be marked as deleted');
+        return;
+      }
+
+      this.logger.log(
+        `Found ${reviewsToDelete.length} reviews to mark as deleted`,
+      );
+
+      const chunks = this.chunkArray(
+        reviewsToDelete.map((r) => r.id),
+        this.batchSize,
+      );
 
       for (const chunk of chunks) {
         await this.prisma.review.updateMany({
           where: {
-            gameId,
-            steamId: { notIn: chunk },
+            id: { in: chunk },
             deleted: false,
           },
           data: { deleted: true },
         });
       }
+
+      this.logger.log(
+        `Successfully marked ${reviewsToDelete.length} reviews as deleted for game ${gameId}`,
+      );
     } catch (error) {
       this.logger.error(
         `Failed to soft delete reviews for game ${gameId}:`,
