@@ -1,6 +1,6 @@
 export class Review {
   constructor(
-    public readonly id: number,
+    public readonly id: number | undefined,
     public readonly steamId: string,
     public readonly gameId: number,
     public readonly authorSteamId: string | null,

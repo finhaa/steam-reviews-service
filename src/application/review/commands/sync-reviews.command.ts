@@ -164,7 +164,7 @@ export class SyncReviewsCommand {
     );
 
     const review = new Review(
-      existing?.id ?? 0,
+      existing?.id ?? undefined,
       steamReview.recommendationid,
       gameId,
       steamReview.author?.steamid || null,

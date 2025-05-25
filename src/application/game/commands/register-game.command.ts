@@ -1,7 +1,6 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { GamePrismaRepository } from '@infrastructure/database/prisma/repositories/game-prisma.repository';
 import { Game } from '@domain/game/entities/game.entity';
-import { RegisterGameDto } from '../dto/game.dto';
 
 @Injectable()
 export class RegisterGameCommand {
@@ -16,7 +15,7 @@ export class RegisterGameCommand {
     }
 
     const game = await this.gameRepo.create(
-      new Game(0, appId, name || null, new Date(), new Date()),
+      new Game(undefined, appId, name || null, new Date(), new Date()),
     );
     return game;
   }

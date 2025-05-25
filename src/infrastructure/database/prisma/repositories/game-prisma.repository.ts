@@ -25,10 +25,7 @@ export class GamePrismaRepository implements GameRepository {
 
   async create(game: Game): Promise<Game> {
     const created = await this.prisma.game.create({
-      data: {
-        appId: game.appId,
-        name: game.name,
-      },
+      data: GameMapper.toPrisma(game, true),
     });
     return GameMapper.toDomain(created);
   }

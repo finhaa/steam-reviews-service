@@ -12,13 +12,17 @@ export class GameMapper {
     );
   }
 
-  static toPrisma(game: Game): PrismaGame {
-    return {
-      id: game.id,
+  static toPrisma(
+    game: Game,
+    isNew = false,
+  ): Omit<PrismaGame, 'id'> | PrismaGame {
+    const prismaGame = {
       appId: game.appId,
       name: game.name,
       createdAt: game.createdAt,
       updatedAt: game.updatedAt,
     };
+
+    return isNew ? prismaGame : { ...prismaGame, id: game.id };
   }
 }
