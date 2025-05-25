@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Logger, Post } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { RegisterGameCommand } from '@app/game/commands/register-game.command';
 import { ListGamesQuery } from '@app/game/queries/list-games.query';
@@ -8,6 +8,8 @@ import { Game } from '@domain/game/entities/game.entity';
 @ApiTags('Games')
 @Controller('games')
 export class GameController {
+  private readonly logger = new Logger(GameController.name);
+
   constructor(
     private readonly registerGameCommand: RegisterGameCommand,
     private readonly listGamesQuery: ListGamesQuery,
@@ -21,7 +23,12 @@ export class GameController {
     type: GameResponseDto,
   })
   async registerGame(@Body() dto: RegisterGameDto): Promise<Game> {
-    return this.registerGameCommand.execute(dto.appId, dto.name);
+    this.logger.log(
+      `Received request to register game with appId ${dto.appId}`,
+    );
+    const game = await this.registerGameCommand.execute(dto.appId, dto.name);
+    this.logger.log(`Game registered successfully with ID ${game.id}`);
+    return game;
   }
 
   @Get()
@@ -32,6 +39,9 @@ export class GameController {
     type: [GameResponseDto],
   })
   async listGames(): Promise<Game[]> {
-    return this.listGamesQuery.execute();
+    this.logger.log('Received request to list all games');
+    const games = await this.listGamesQuery.execute();
+    this.logger.log(`Returning ${games.length} games`);
+    return games;
   }
 }

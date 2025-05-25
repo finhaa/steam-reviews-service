@@ -29,9 +29,9 @@ export class SyncReviewsCommand {
       const game = await this.validateAndGetGame(gameId);
       const steamReviews = await this.fetchAndValidateSteamReviews(game.appId);
       const { reviewsToCreate, reviewsToUpdate, fetchedIds } =
-        await this.processReviews(game.id, steamReviews);
+        await this.processReviews(game.id as number, steamReviews);
       await this.persistChanges(
-        game.id,
+        game.id as number,
         reviewsToCreate,
         reviewsToUpdate,
         fetchedIds,
