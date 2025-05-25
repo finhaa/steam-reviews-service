@@ -4,7 +4,7 @@ import { ReviewResponseDto } from '../dto/review.dto';
 export class ReviewDtoMapper {
   static toDto(review: Review): ReviewResponseDto {
     const dto = new ReviewResponseDto();
-    dto.id = review.id;
+    dto.id = review.id as number;
     dto.steamId = review.steamId;
     dto.gameId = review.gameId;
     dto.authorSteamId = review.authorSteamId || undefined;

@@ -15,4 +15,4 @@ export class GameDtoMapper {
   static toDtoList(games: Game[]): GameResponseDto[] {
     return games.map((game) => this.toDto(game));
   }
-} 
+}
