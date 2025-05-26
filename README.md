@@ -1,63 +1,52 @@
 # Steam Reviews Service
 
-A backend service that fetches and manages Steam game reviews, built with NestJS, Prisma, and PostgreSQL, following **Domain-Driven Design (DDD)** and **Clean Architecture** principles.
+A NestJS service that synchronizes and manages Steam game reviews, providing a clean API to access and manage game information and user reviews.
 
 ## Features
 
-- Fetch user reviews for Steam games using Steam's public API
-- Persist reviews in PostgreSQL database using Prisma
-- Track and handle review updates and deletions
-- RESTful API for game and review management
-- Swagger API documentation
-- Built with a scalable DDD architecture
-- Performance optimizations:
-  - Batch processing for database operations
-  - Rate limiting and throttling
-  - Exponential backoff for API failures
-  - Cursor-based pagination
+- Fetch and sync game details from Steam
+- Synchronize game reviews with pagination support
+- Rate limiting and retry mechanisms for Steam API calls
+- Docker support for easy deployment
+- PostgreSQL for data persistence
 
-## Tech Stack
+## Prerequisites
 
-- Node.js (v20+)
-- NestJS + TypeScript
-- Prisma ORM
-- PostgreSQL
-- Docker + Docker Compose
-- Swagger for API docs
-- Class-validator for validation
+- Node.js 20.x or Docker
+- PostgreSQL 16.x (if running locally)
+- Redis 7.x (if running locally)
 
-## Installation
+## Running with Docker
 
-1. Clone the repository:
+The easiest way to run the entire stack is using Docker Compose:
+
 ```bash
-git clone <your-repo-url>
-cd steam-reviews-service
+# Build and start all services
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Stop all services
+docker compose down
 ```
 
-2. Install dependencies:
+## Local Development Setup
+
+1. Install dependencies:
 ```bash
-pnpm install
+npm install
 ```
 
-3. Set up environment variables:
+2. Set up environment variables:
 ```bash
-# Create .env file
 cp .env.example .env
-
-# Required environment variables
-DATABASE_URL="postgresql://user:password@localhost:5432/steam_reviews_db"
-
-# Optional performance tuning (defaults shown)
-STEAM_PAGE_SIZE=100                    # Number of reviews per API request
-STEAM_RATE_LIMIT_TTL=60000            # Rate limit window in milliseconds
-STEAM_RATE_LIMIT_REQUESTS=100         # Maximum requests per window
-STEAM_BACKOFF_INITIAL_DELAY=1000      # Initial retry delay in milliseconds
-STEAM_BACKOFF_MAX_DELAY=30000         # Maximum retry delay in milliseconds
-STEAM_BACKOFF_MAX_ATTEMPTS=3          # Maximum retry attempts
-DB_BATCH_SIZE=100                     # Database batch operation size
+# Edit .env with your configuration
 ```
 
-4. Set up the database:
+3. Start PostgreSQL and Redis (if running locally)
+
+4. Run database migrations:
 ```bash
 # Run database migrations
 pnpm prisma migrate deploy
@@ -66,143 +55,66 @@ pnpm prisma migrate deploy
 pnpm prisma generate
 ```
 
-## Running the Application
-
+5. Start the development server:
 ```bash
-# Development mode
 pnpm run start:dev
-
-# Production mode
-pnpm run build
-pnpm run start:prod
 ```
 
-The server will start at `http://localhost:3000` by default.
+## API Endpoints
 
-## API Documentation
+### Games
 
-Once the server is running, visit `http://localhost:3000/api` for Swagger documentation.
+- `POST /games` - Register a new game
+  - Body: `{ "appId": number }`
 
-### Example API Requests
+- `GET /games` - List registered games
+  - Query params: `page`, `limit`
 
-#### 1. Register a Game
-```bash
-curl -X POST http://localhost:3000/games \
-  -H "Content-Type: application/json" \
-  -d '{"appId": 570, "name": "Dota 2"}'
+- `GET /games/search` - Search games on Steam
+  - Query params: `query`
+
+### Reviews
+
+- `GET /games/:gameId/reviews` - Get reviews for a game
+  - Query params: `page`, `limit`
+
+- `POST /games/:gameId/reviews/sync` - Trigger review sync for a game
+
+- `GET /games/:gameId/reviews/sync/:jobId/status` - Get status for a job
+
+- `GET /reviews/:reviewId` - Get Specific review
+
+## Project Structure
+
+```
+src/
+├── app/                    # Application layer
+│   ├── game/              # Game module
+│   └── review/            # Review module
+├── domain/                # Domain layer
+│   ├── game/             # Game domain
+│   └── review/           # Review domain
+├── infrastructure/        # Infrastructure layer
+│   ├── database/         # Database configurations
+│   ├── external/         # External services
+│   │   └── steam-api/    # Steam API integration
+│   └── services/         # Shared services
+│   └── queue/            # Queue
+└── interfaces/           # Interface layer
+    └── rest/             # REST API controllers
 ```
 
-#### 2. List All Games
-```bash
-curl http://localhost:3000/games
-```
+## Environment Variables
 
-#### 3. Fetch Reviews for a Game
-```bash
-curl -X POST http://localhost:3000/games/1/reviews/fetch
-```
+| Variable | Description | Default |
+|----------|-------------|---------|
+| DATABASE_URL | PostgreSQL connection URL | - |
+| REDIS_HOST | Redis host | localhost |
+| REDIS_PORT | Redis port | 6379 |
+| STEAM_PAGE_SIZE | Reviews per page | 100 |
+| STEAM_RATE_LIMIT_TTL | Rate limit window (ms) | 60000 |
+| STEAM_RATE_LIMIT_REQUESTS | Requests per window | 100 |
 
-#### 4. List Reviews for a Game
-```bash
-curl http://localhost:3000/games/1/reviews
-```
+## License
 
-#### 5. Get a Specific Review
-```bash
-curl http://localhost:3000/games/1/reviews/1
-```
-
-## Performance Features
-
-### 1. Rate Limiting
-The service implements rate limiting to prevent API abuse and ensure stable operation:
-- Global rate limit: 100 requests per minute
-- Per-endpoint throttling where needed
-- Configurable via environment variables
-
-### 2. Batch Processing
-Database operations are optimized using batch processing:
-- Bulk create/update/delete operations
-- Configurable batch sizes
-- Transaction-based for data consistency
-
-### 3. Error Resilience
-Robust error handling with:
-- Exponential backoff for failed requests
-- Configurable retry parameters
-- Proper error reporting and logging
-
-### 4. Pagination
-Efficient data handling through:
-- Cursor-based pagination for Steam API requests
-- Configurable page sizes
-- Memory-efficient processing
-
-## Review Sync Strategy
-
-The service implements a robust strategy for keeping reviews synchronized with Steam:
-
-1. **Identification**
-   - Each review is uniquely identified by its Steam recommendation ID
-   - Reviews are associated with games via Steam App ID
-
-2. **Update Detection**
-   - Reviews are compared using Steam's timestamp_updated field
-   - If a review's content or rating changes, the local copy is updated
-   - Original creation timestamp is preserved while update timestamp reflects changes
-
-3. **Deletion Handling**
-   - Uses soft delete strategy
-   - When a review is no longer present in Steam's API response, it's marked as deleted
-   - Deleted reviews are preserved in the database but filtered from regular queries
-
-4. **Sync Process**
-   - Fetches all reviews for a game from Steam
-   - Compares against existing reviews in database
-   - Updates modified reviews
-   - Marks missing reviews as deleted
-   - Creates new reviews as needed
-
-## Database Schema
-
-### Game Table
-```prisma
-model Game {
-  id        Int      @id @default(autoincrement())
-  appId     Int      @unique
-  name      String?
-  reviews   Review[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-```
-
-### Review Table
-```prisma
-model Review {
-  id               Int       @id @default(autoincrement())
-  steamId          String    @unique
-  game             Game      @relation(fields: [gameId], references: [id])
-  gameId           Int
-  authorSteamId    String?
-  recommended      Boolean
-  content          String
-  timestampCreated DateTime
-  timestampUpdated DateTime?
-  deleted          Boolean   @default(false)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-}
-```
-
-## Error Handling
-
-The service implements comprehensive error handling:
-
-- Invalid Steam App IDs
-- Network failures when fetching reviews
-- Database constraints violations
-- Invalid input validation
-- Not found resources
-
-All errors return appropriate HTTP status codes and descriptive messages.
+This project is licensed under the MIT License - see the LICENSE file for details.
