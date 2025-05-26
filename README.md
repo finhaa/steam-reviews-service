@@ -15,6 +15,7 @@ A NestJS service that synchronizes and manages Steam game reviews, providing a c
 - Node.js 20.x or Docker
 - PostgreSQL 16.x (if running locally)
 - Redis 7.x (if running locally)
+- pnpm
 
 ## Running with Docker
 
@@ -33,9 +34,12 @@ docker compose down
 
 ## Local Development Setup
 
-1. Install dependencies:
+1. Install pnpm and dependencies:
 ```bash
-npm install
+npm install -g pnpm
+
+# Install dependencies
+pnpm install
 ```
 
 2. Set up environment variables:
@@ -108,7 +112,7 @@ src/
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| DATABASE_URL | PostgreSQL connection URL | - |
+| DATABASE_URL | PostgreSQL connection URL | postgresql://postgres:postgres@localhost:5432/steam_reviews?schema=public |
 | REDIS_HOST | Redis host | localhost |
 | REDIS_PORT | Redis port | 6379 |
 | STEAM_PAGE_SIZE | Reviews per page | 100 |
