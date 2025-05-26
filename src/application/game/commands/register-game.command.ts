@@ -1,12 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Game } from '@domain/game/entities/game.entity';
-import {
-  GameDuplicateException,
-  GameNotFoundException,
-  GameOperationException,
-} from '@domain/game/exceptions/game.exceptions';
 import { GamePrismaRepository } from '@infrastructure/database/prisma/repositories/game-prisma.repository';
-import { SteamApiService } from '@infrastructure/external/steam-api.service';
+import { Game } from '@domain/game/entities/game.entity';
+import { GameOperationException } from '@domain/game/exceptions/game.exceptions';
+import { SteamApiService } from '@infrastructure/external/steam-api/steam-api.service';
 
 @Injectable()
 export class RegisterGameCommand {
@@ -17,46 +13,24 @@ export class RegisterGameCommand {
     private readonly steamService: SteamApiService,
   ) {}
 
-  async execute(appId: number, name?: string): Promise<Game> {
+  async execute(appId: number): Promise<Game> {
     try {
-      this.logger.log(`Registering game: ${name || 'Unknown'} (${appId})`);
+      this.logger.log(`Registering game with Steam App ID ${appId}`);
 
-      const existingGame = await this.gameRepo.findByAppId(appId);
-      if (existingGame) {
-        throw new GameDuplicateException(appId);
-      }
+      const gameDetails = await this.steamService.getGameDetails(appId);
+      const game = Game.fromSteamDetails(appId, gameDetails);
 
-      const existsOnSteam = await this.steamService.validateGameExists(appId);
-      if (!existsOnSteam) {
-        throw new GameNotFoundException(
-          `Game with Steam App ID ${appId} does not exist on Steam`,
-        );
-      }
+      const savedGame = await this.gameRepo.create(game);
 
-      const game = new Game(
-        undefined,
-        appId,
-        name || null,
-        new Date(),
-        new Date(),
+      this.logger.log(
+        `Successfully registered game ${savedGame.name} (ID: ${savedGame.id})`,
       );
-      return this.gameRepo.create(game);
+      return savedGame;
     } catch (error) {
-      this.logger.error(
-        `Failed to register game ${appId}:`,
-        error instanceof Error ? error.stack : error,
-      );
-
-      if (
-        error instanceof GameDuplicateException ||
-        error instanceof GameNotFoundException
-      ) {
-        throw error;
-      }
-
+      this.logger.error(`Failed to register game with App ID ${appId}:`, error);
       throw new GameOperationException(
         'register',
-        `Failed to register game with appId ${appId}`,
+        `Failed to register game: ${error instanceof Error ? error.message : 'Unknown error'}`,
         error instanceof Error ? error : undefined,
       );
     }

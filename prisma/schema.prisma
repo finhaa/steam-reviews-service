@@ -8,12 +8,28 @@ datasource db {
 }
 
 model Game {
-  id        Int      @id @default(autoincrement())
-  appId     Int      @unique
-  name      String?
-  reviews   Review[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              Int      @id @default(autoincrement())
+  appId           Int      @unique @map("app_id")
+  name            String
+  description     String   @default("") @db.Text
+  shortDescription String  @default("") @map("short_description") @db.Text
+  headerImage     String   @default("") @map("header_image")
+  website         String?
+  developers      String[] @default([])
+  publishers      String[] @default([])
+  isFree          Boolean  @default(false) @map("is_free")
+  requiredAge     Int      @default(0) @map("required_age")
+  metacriticScore Int?     @map("metacritic_score")
+  metacriticUrl   String?  @map("metacritic_url")
+  releaseDate     DateTime? @map("release_date")
+  platforms       Json     @default("{\"windows\": false, \"mac\": false, \"linux\": false}")
+  categories      Json     @default("[]")
+  genres          Json     @default("[]")
+  reviews         Review[]
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("games")
 }
 
 model Review {
@@ -29,4 +45,6 @@ model Review {
   deleted          Boolean   @default(false)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+
+  @@map("reviews")
 }

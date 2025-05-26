@@ -1,10 +1,18 @@
-import { Body, Controller, Get, Logger, Post, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Logger,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { RegisterGameCommand } from '@app/game/commands/register-game.command';
 import { ListGamesQuery } from '@app/game/queries/list-games.query';
 import { GameResponseDto, RegisterGameDto } from '@app/game/dto/game.dto';
 import { GameDtoMapper } from '@app/game/mappers/game-dto.mapper';
-import { SteamApiService } from '@infrastructure/external/steam-api.service';
+import { SteamApiService } from '@infrastructure/external/steam-api/steam-api.service';
 
 @ApiTags('Games')
 @Controller('games')
@@ -18,19 +26,29 @@ export class GameController {
   ) {}
 
   @Post()
-  @ApiOperation({ summary: 'Register a new game by Steam AppID' })
+  @ApiOperation({ summary: 'Register a new game' })
   @ApiResponse({
     status: 201,
-    description: 'Game registered successfully.',
+    description: 'Game registered successfully',
     type: GameResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid game data',
   })
   async registerGame(@Body() dto: RegisterGameDto): Promise<GameResponseDto> {
     this.logger.log(
-      `Received request to register game with appId ${dto.appId}`,
+      `Received request to register game with app ID ${dto.appId}`,
     );
-    const game = await this.registerGameCommand.execute(dto.appId, dto.name);
-    this.logger.log(`Game registered successfully with ID ${game.id}`);
-    return GameDtoMapper.toDto(game);
+
+    const game = await this.registerGameCommand.execute(dto.appId);
+    const responseDto = GameDtoMapper.toDto(game);
+
+    this.logger.log(
+      `Successfully registered game ${game.name} (ID: ${game.id})`,
+    );
+
+    return responseDto;
   }
 
   @Get()

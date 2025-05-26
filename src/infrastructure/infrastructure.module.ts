@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { DatabaseModule } from './database/database.module';
 import { RetryService } from './services/retry.service';
-import { SteamApiService } from './external/steam-api.service';
+import { SteamApiService } from './external/steam-api/steam-api.service';
 import configuration from '../config/configuration';
 
 @Module({

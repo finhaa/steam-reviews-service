@@ -1,11 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  SteamApiService,
-  SteamReview,
-} from '@infrastructure/external/steam-api.service';
+import { SteamApiService } from '@infrastructure/external/steam-api/steam-api.service';
 import { Review } from '@domain/review/entities/review.entity';
 import { ReviewPrismaRepository } from '@infrastructure/database/prisma/repositories/review-prisma.repository';
 import { InvalidReviewDataException } from '@domain/review/exceptions/review.exceptions';
+import { SteamReview } from '@infrastructure/external/steam-api/interfaces/steam-review.interface';
 
 @Injectable()
 export class ReviewSyncService {

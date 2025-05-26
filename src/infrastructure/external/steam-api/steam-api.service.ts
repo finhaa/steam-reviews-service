@@ -4,54 +4,15 @@ import { Throttle } from '@nestjs/throttler';
 import axios from 'axios';
 import { RetryService } from '@infrastructure/services/retry.service';
 import { GameNotFoundException } from '@domain/game/exceptions/game.exceptions';
-
-export interface SteamReview {
-  recommendationid: string;
-  author?: { steamid: string };
-  review: string;
-  timestamp_created: number;
-  timestamp_updated: number;
-  voted_up: boolean;
-}
-
-interface SteamApiResponse {
-  success: number;
-  reviews: SteamReview[];
-  cursor: string;
-}
-
-interface SteamAppDetails {
-  success: boolean;
-  data: {
-    type: string;
-    name: string;
-    steam_appid: number;
-    is_free: boolean;
-  };
-}
-
-interface SteamSearchResult {
-  total: number;
-  items: Array<{
-    type: string;
-    name: string;
-    id: number;
-    tiny_image: string;
-    metascore: string;
-    platforms: {
-      windows: boolean;
-      mac: boolean;
-      linux: boolean;
-    };
-    streamingvideo: boolean;
-    price?: {
-      currency: string;
-      initial: number;
-      final: number;
-    };
-    controller_support?: string;
-  }>;
-}
+import {
+  SteamAppDetails,
+  SteamAppDetailsResponse,
+} from './interfaces/steam-app.interface';
+import {
+  SteamReview,
+  SteamReviewsResponse,
+} from './interfaces/steam-review.interface';
+import { SteamSearchResult } from './interfaces/steam-search.interface';
 
 @Injectable()
 export class SteamApiService {
@@ -72,21 +33,20 @@ export class SteamApiService {
       limit: 100,
     },
   })
-  async validateGameExists(appId: number): Promise<boolean> {
+  async getGameDetails(appId: number): Promise<SteamAppDetails> {
     try {
       const response = await this.retryService.withRetry(() =>
-        axios.get<Record<number, SteamAppDetails>>(
-          `${this.baseUrl}/api/appdetails`,
-          {
-            params: { appids: appId },
-            headers: { 'User-Agent': 'NestJS-SteamReviewService' },
-          },
-        ),
+        axios.get<SteamAppDetailsResponse>(`${this.baseUrl}/api/appdetails`, {
+          params: { appids: appId },
+          headers: { 'User-Agent': 'NestJS-SteamReviewService' },
+        }),
       );
 
       if (!response.data || !response.data[appId]) {
         this.logger.warn(`No data found for app ID ${appId}`);
-        return false;
+        throw new GameNotFoundException(
+          `Game with Steam App ID ${appId} not found`,
+        );
       }
 
       const appData = response.data[appId];
@@ -94,16 +54,28 @@ export class SteamApiService {
         this.logger.warn(
           `Steam API returned unsuccessful status for app ID ${appId}`,
         );
-        return false;
+        throw new GameNotFoundException(
+          `Game with Steam App ID ${appId} not found`,
+        );
       }
 
-      return appData.data.type === 'game';
+      if (appData.data.type !== 'game') {
+        throw new GameNotFoundException(`App ID ${appId} is not a game`);
+      }
+
+      return appData.data;
     } catch (error) {
       this.logger.error(
-        `Error validating game ${appId}:`,
+        `Error fetching game details for ${appId}:`,
         error instanceof Error ? error.stack : error,
       );
-      return false;
+      if (error instanceof GameNotFoundException) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to fetch game details: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        HttpStatus.BAD_GATEWAY,
+      );
     }
   }
 
@@ -164,7 +136,7 @@ export class SteamApiService {
     );
 
     const response = await this.retryService.withRetry(() =>
-      axios.get<SteamApiResponse>(`${this.baseUrl}/appreviews/${appId}`, {
+      axios.get<SteamReviewsResponse>(`${this.baseUrl}/appreviews/${appId}`, {
         params: {
           json: 1,
           filter: 'recent',
@@ -223,7 +195,7 @@ export class SteamApiService {
         error instanceof Error ? error.message : 'Unknown error';
 
       throw new HttpException(
-        `Failed to fetch reviews from Steam: ${errorMessage}`,
+        `Failed to fetch reviews: ${errorMessage}`,
         HttpStatus.BAD_GATEWAY,
       );
     }
