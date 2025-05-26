@@ -6,11 +6,18 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
+  DefaultValuePipe,
 } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { SyncReviewsCommand } from '@app/review/commands/sync-reviews.command';
 import { ListReviewsQuery } from '@app/review/queries/list-reviews.query';
-import { ReviewResponseDto } from '@app/review/dto/review.dto';
 import { ReviewDtoMapper } from '@app/review/mappers/review-dto.mapper';
 import { ReviewQueueService } from '@infrastructure/queue/review/review-queue.service';
 
@@ -26,12 +33,39 @@ export class GameReviewController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'List all reviews for a game' })
+  @ApiOperation({ summary: 'List reviews for a game' })
   @ApiParam({ name: 'gameId', type: Number })
+  @ApiQuery({
+    name: 'page',
+    type: Number,
+    required: false,
+    description: 'Page number (1-based)',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    type: Number,
+    required: false,
+    description: 'Number of items per page',
+    example: 20,
+  })
   @ApiResponse({
     status: 200,
-    description: 'List of reviews',
-    type: [ReviewResponseDto],
+    description: 'Reviews retrieved successfully',
+    schema: {
+      properties: {
+        reviews: {
+          type: 'array',
+          items: {
+            $ref: '#/components/schemas/ReviewResponseDto',
+          },
+        },
+        total: { type: 'number' },
+        page: { type: 'number' },
+        pageSize: { type: 'number' },
+        totalPages: { type: 'number' },
+      },
+    },
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
@@ -43,17 +77,18 @@ export class GameReviewController {
   })
   async listReviews(
     @Param('gameId', ParseIntPipe) gameId: number,
-  ): Promise<ReviewResponseDto[]> {
-    this.logger.log(`Received request to list reviews for game ${gameId}`);
-
-    const reviews = await this.listReviewsQuery.execute(gameId);
-    const responseDtos = ReviewDtoMapper.toDtoList(reviews);
-
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
+  ) {
     this.logger.log(
-      `Returning ${responseDtos.length} reviews for game ${gameId}`,
+      `Received request to list reviews for game ${gameId} (page ${page}, size ${pageSize})`,
     );
 
-    return responseDtos;
+    const result = await this.listReviewsQuery.execute(gameId, page, pageSize);
+    return {
+      ...result,
+      reviews: ReviewDtoMapper.toDtoList(result.reviews),
+    };
   }
 
   @Post('sync')

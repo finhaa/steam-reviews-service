@@ -155,44 +155,69 @@ export class SteamApiService {
       limit: 100,
     },
   })
+  async fetchReviewPage(
+    appId: number,
+    cursor: string = '*',
+  ): Promise<{ reviews: SteamReview[]; nextCursor: string | null }> {
+    this.logger.debug(
+      `Fetching reviews for app ${appId} with cursor ${cursor}`,
+    );
+
+    const response = await this.retryService.withRetry(() =>
+      axios.get<SteamApiResponse>(`${this.baseUrl}/appreviews/${appId}`, {
+        params: {
+          json: 1,
+          filter: 'recent',
+          language: 'all',
+          cursor: cursor,
+          num_per_page: this.pageSize,
+        },
+        headers: { 'User-Agent': 'NestJS-SteamReviewService' },
+      }),
+    );
+
+    const data = response.data;
+    this.logger.debug(`Received ${data.reviews?.length || 0} reviews`);
+
+    if (data.success !== 1) {
+      throw new Error('Steam API returned an unsuccessful status');
+    }
+
+    return {
+      reviews: data.reviews || [],
+      nextCursor: data.cursor && data.cursor !== '' ? data.cursor : null,
+    };
+  }
+
+  @Throttle({
+    default: {
+      ttl: 60000,
+      limit: 100,
+    },
+  })
   async fetchAllReviews(appId: number): Promise<SteamReview[]> {
     const allReviews: SteamReview[] = [];
     let cursor = '*';
 
     try {
-      do {
-        this.logger.debug(
-          `Fetching reviews for app ${appId} with cursor ${cursor}`,
+      while (cursor) {
+        const { reviews, nextCursor } = await this.fetchReviewPage(
+          appId,
+          cursor,
         );
-        const response = await this.retryService.withRetry(() =>
-          axios.get<SteamApiResponse>(`${this.baseUrl}/appreviews/${appId}`, {
-            params: {
-              json: 1,
-              filter: 'recent',
-              language: 'all',
-              cursor: cursor,
-              num_per_page: this.pageSize,
-            },
-            headers: { 'User-Agent': 'NestJS-SteamReviewService' },
-          }),
-        );
-
-        const data = response.data;
-        this.logger.debug(`Received ${data.reviews?.length || 0} reviews`);
-
-        if (data.success !== 1) {
-          throw new Error('Steam API returned an unsuccessful status');
-        }
-
-        const reviews = data.reviews || [];
-        allReviews.push(...reviews);
-
-        cursor = data.cursor;
 
         if (reviews.length === 0) {
           break;
         }
-      } while (cursor && cursor !== '');
+
+        allReviews.push(...reviews);
+
+        if (!nextCursor) {
+          break;
+        }
+
+        cursor = nextCursor;
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';

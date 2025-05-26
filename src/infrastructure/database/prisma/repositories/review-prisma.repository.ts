@@ -250,6 +250,50 @@ export class ReviewPrismaRepository implements ReviewRepository {
     }
   }
 
+  async findByGameIdPaginated(
+    gameId: number,
+    skip: number,
+    take: number,
+  ): Promise<Review[]> {
+    try {
+      const reviews = await this.prisma.review.findMany({
+        where: { gameId },
+        skip,
+        take,
+        orderBy: { timestampCreated: 'desc' },
+      });
+      return reviews.map(ReviewMapper.toDomain);
+    } catch (error) {
+      this.logger.error(
+        `Failed to find paginated reviews for game ${gameId}:`,
+        error,
+      );
+      throw new ReviewOperationException(
+        'find',
+        `Failed to find paginated reviews for game ${gameId}`,
+        error instanceof Error ? error : undefined,
+      );
+    }
+  }
+
+  async countByGameId(gameId: number): Promise<number> {
+    try {
+      return await this.prisma.review.count({
+        where: { gameId },
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to count reviews for game ${gameId}:`,
+        error,
+      );
+      throw new ReviewOperationException(
+        'count',
+        `Failed to count reviews for game ${gameId}`,
+        error instanceof Error ? error : undefined,
+      );
+    }
+  }
+
   private chunkArray<T>(array: T[], size: number): T[][] {
     const chunks: T[][] = [];
     for (let i = 0; i < array.length; i += size) {
