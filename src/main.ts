@@ -2,7 +2,9 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { AllExceptionsFilter } from '@infrastructure/filters/http-exception.filter';
+import { HttpExceptionFilter } from './interfaces/rest/exceptions/http-exception.filter';
+import { GameExceptionFilter } from '@interfaces/rest/exceptions/game-exception.filter';
+import { ReviewExceptionFilter } from '@interfaces/rest/exceptions/review-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -15,7 +17,11 @@ async function bootstrap() {
     }),
   );
 
-  app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalFilters(
+    new GameExceptionFilter(),
+    new ReviewExceptionFilter(),
+    new HttpExceptionFilter(),
+  );
 
   const config = new DocumentBuilder()
     .setTitle('Steam Reviews API')
@@ -24,6 +30,8 @@ async function bootstrap() {
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
+
+  app.enableCors();
 
   await app.listen(process.env.PORT ?? 3000);
 }

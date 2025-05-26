@@ -43,4 +43,4 @@ export class GameQueryException extends HttpException {
       HttpStatus.INTERNAL_SERVER_ERROR,
     );
   }
-} 
+}

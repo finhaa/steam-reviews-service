@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Logger, Post } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Body, Controller, Get, Logger, Post, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { RegisterGameCommand } from '@app/game/commands/register-game.command';
 import { ListGamesQuery } from '@app/game/queries/list-games.query';
 import { GameResponseDto, RegisterGameDto } from '@app/game/dto/game.dto';
 import { GameDtoMapper } from '@app/game/mappers/game-dto.mapper';
+import { SteamApiService } from '@infrastructure/external/steam-api.service';
 
 @ApiTags('Games')
 @Controller('games')
@@ -13,6 +14,7 @@ export class GameController {
   constructor(
     private readonly registerGameCommand: RegisterGameCommand,
     private readonly listGamesQuery: ListGamesQuery,
+    private readonly steamService: SteamApiService,
   ) {}
 
   @Post()
@@ -43,5 +45,24 @@ export class GameController {
     const games = await this.listGamesQuery.execute();
     this.logger.log(`Returning ${games.length} games`);
     return GameDtoMapper.toDtoList(games);
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Search games on Steam' })
+  @ApiQuery({
+    name: 'query',
+    required: true,
+    type: String,
+    description: 'Search term for games',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of matching games',
+    type: [GameResponseDto],
+  })
+  async searchGames(
+    @Query('query') query: string,
+  ): Promise<Array<{ appid: number; name: string }>> {
+    return this.steamService.searchGames(query);
   }
 }
