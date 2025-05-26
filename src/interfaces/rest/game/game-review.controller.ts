@@ -12,6 +12,7 @@ import { SyncReviewsCommand } from '@app/review/commands/sync-reviews.command';
 import { ListReviewsQuery } from '@app/review/queries/list-reviews.query';
 import { ReviewResponseDto } from '@app/review/dto/review.dto';
 import { ReviewDtoMapper } from '@app/review/mappers/review-dto.mapper';
+import { ReviewQueueService } from '@infrastructure/queue/review/review-queue.service';
 
 @ApiTags('game-reviews')
 @Controller('games/:gameId/reviews')
@@ -21,6 +22,7 @@ export class GameReviewController {
   constructor(
     private readonly syncReviewsCommand: SyncReviewsCommand,
     private readonly listReviewsQuery: ListReviewsQuery,
+    private readonly reviewQueue: ReviewQueueService,
   ) {}
 
   @Get()
@@ -55,21 +57,42 @@ export class GameReviewController {
   }
 
   @Post('sync')
-  @ApiOperation({ summary: 'Sync reviews from Steam for a game' })
+  @ApiOperation({ summary: 'Queue a review sync job from Steam for a game' })
   @ApiParam({ name: 'gameId', type: Number })
   @ApiResponse({
-    status: 200,
-    description: 'Reviews synchronized successfully',
+    status: 202,
+    description: 'Review sync job queued successfully',
     schema: {
       properties: {
+        jobId: { type: 'string' },
         message: { type: 'string' },
       },
     },
   })
   async syncReviews(
     @Param('gameId', ParseIntPipe) gameId: number,
-  ): Promise<{ message: string }> {
+  ): Promise<{ jobId: string; message: string }> {
     this.logger.log(`Received request to sync reviews for game ${gameId}`);
-    return this.syncReviewsCommand.execute(gameId);
+    return await this.reviewQueue.queueSync(gameId);
+  }
+
+  @Get('sync/:jobId/status')
+  @ApiOperation({ summary: 'Get the status of a review sync job' })
+  @ApiParam({ name: 'gameId', type: Number })
+  @ApiParam({ name: 'jobId', type: String })
+  @ApiResponse({
+    status: 200,
+    description: 'Job status retrieved successfully',
+    schema: {
+      properties: {
+        status: { type: 'string' },
+        progress: { type: 'number' },
+        result: { type: 'object', nullable: true },
+        error: { type: 'string', nullable: true },
+      },
+    },
+  })
+  async getJobStatus(@Param('jobId') jobId: string) {
+    return await this.reviewQueue.getJobStatus(jobId);
   }
 }

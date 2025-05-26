@@ -1,16 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { DatabaseModule } from '@infrastructure/database/database.module';
-import { RetryService } from '@infrastructure/services/retry.service';
-import { SteamApiService } from '@infrastructure/external/steam-api.service';
-import { performanceConfig } from '@infrastructure/config/performance.config';
+import { DatabaseModule } from './database/database.module';
+import { RetryService } from './services/retry.service';
+import { SteamApiService } from './external/steam-api.service';
+import configuration from '../config/configuration';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
+      load: [configuration],
       isGlobal: true,
-      load: [performanceConfig],
     }),
     ThrottlerModule.forRoot([
       {
@@ -23,4 +23,4 @@ import { performanceConfig } from '@infrastructure/config/performance.config';
   providers: [RetryService, SteamApiService],
   exports: [DatabaseModule, RetryService, SteamApiService],
 })
-export class InfrastructureModule {} 
+export class InfrastructureModule {}
