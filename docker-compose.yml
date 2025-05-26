@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/steam_reviews?schema=public
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - STEAM_PAGE_SIZE=100
+      - STEAM_RATE_LIMIT_TTL=60000
+      - STEAM_RATE_LIMIT_REQUESTS=100
+      - STEAM_BACKOFF_INITIAL_DELAY=1000
+      - STEAM_BACKOFF_MAX_DELAY=30000
+      - STEAM_BACKOFF_MAX_ATTEMPTS=3
+      - DB_BATCH_SIZE=100
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - steam-reviews-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=steam_reviews
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - steam-reviews-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - steam-reviews-network
+    restart: unless-stopped
+
+networks:
+  steam-reviews-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data: 
